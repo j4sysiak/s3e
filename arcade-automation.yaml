@@ -1,0 +1,42 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: arcade-listener
+  namespace: j4sysiak-dev
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - name: arcade-trigger
+      template:
+        spec:
+          resourceTemplates:
+            - apiVersion: "tekton.dev/v1beta1"
+              kind: PipelineRun
+              metadata:
+                generateName: arcade-auto-run-
+              spec:
+                pipelineRef:
+                  name: arcade-pipeline
+                workspaces:
+                  - name: shared-data
+                    volumeClaimTemplate:
+                      spec:
+                        accessModes:
+                          - ReadWriteOnce
+                        resources:
+                          requests:
+                            storage: 1Gi
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: arcade-listener-url
+  namespace: j4sysiak-dev
+spec:
+  # Tutaj nie podajemy hostname, OpenShift sam wygeneruje unikalny adres dla 'ucha'
+  to:
+    kind: Service
+    name: el-arcade-listener
+  port:
+    targetPort: 8080

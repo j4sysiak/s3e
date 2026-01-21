@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-deploy
+  namespace: j4sysiak-dev
+spec:
+  steps:
+    - name: clone
+      image: golang
+      script: |
+        #!/bin/bash
+        git clone https://github.com/j4sysiak/s3e /workspace/src
+    - name: build
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli
+      script: |
+        #!/bin/bash
+        # Uruchamiamy budowanie obrazu
+        oc start-build highscore -F -n j4sysiak-dev
+    - name: deploy
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli
+      script: |
+        #!/bin/bash
+        # Wymuszamy restart aplikacji z nowym obrazem
+        BUILDDATE=$(date +%Y-%m-%d-%H%M%S)
+        oc patch deployment highscore -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"last-build\":\"$BUILDDATE\"}}}}}"
