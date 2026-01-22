@@ -1,0 +1,50 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener
+  namespace: j4sysiak-dev
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - name: github-push-trigger
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "secretRef"
+              value:
+                secretName: github-secret
+                secretKey: secret
+            - name: "eventTypes"
+              value: ["push"]
+      template:
+        spec:
+          resourceTemplates:
+            - apiVersion: "tekton.dev/v1beta1"
+              kind: PipelineRun
+              metadata:
+                generateName: gh-auto-build-
+              spec:
+                pipelineRef:
+                  name: arcade-pipeline
+                workspaces:
+                  - name: shared-data
+                    volumeClaimTemplate:
+                      spec:
+                        accessModes:
+                          - ReadWriteOnce
+                        resources:
+                          requests:
+                            storage: 1Gi
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: github-webhook-url
+  namespace: j4sysiak-dev
+spec:
+  to:
+    kind: Service
+    name: el-github-listener
+  port:
+    targetPort: 8080
